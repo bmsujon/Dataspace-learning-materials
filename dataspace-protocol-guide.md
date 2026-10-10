@@ -6,9 +6,9 @@ As of 10 October 2026 · covers DSP 2025-1, current erratum 1.0.2
 
 This guide explains the Dataspace Protocol in depth: what it defines, the terms it uses, every message and state, how the wire format works, and how EDC and Tractus-X EDC implement it. The [Backend Team Primer](Catena-X%20%26%20Tractus-X%20Backend%20Team%20Primer.md) gives a one-section overview of DSP (its section 6); read that first if you are new to Catena-X, then come here when you need to read DSP traffic, debug a negotiation or build something that speaks the protocol.
 
-Read sections 2–4 for the big picture, version history and vocabulary. Sections 5–8 walk through the specification itself: the common rules, then the Catalog, Contract Negotiation and Transfer Process protocols. Section 9 covers JSON-LD and the policy profile, section 10 maps all of it onto EDC and Tractus-X EDC, and sections 11–13 cover conformance testing, pitfalls and further reading.
+Read sections 2–4 for the big picture, version history and vocabulary. Sections 5–8 walk through the specification itself: the common rules, then the Catalog, Contract Negotiation and Transfer Process protocols. Section 9 covers JSON-LD and how to read a policy, section 10 maps all of it onto EDC and Tractus-X EDC, and sections 11–14 cover conformance testing, pitfalls, a ten-point summary and further reading. When you have read this guide and the [DCP guide](decentralized-claims-protocol-guide.md), the [walkthrough](dsp-dcp-walkthrough.md) follows one exchange through both protocols, message by message.
 
-Everything in sections 5–9 is taken from the [DSP 2025-1 specification](https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1-err2/) and its [source repository](https://github.com/eclipse-dataspace-protocol-base/DataspaceProtocol) at tag `2025-1-err2`. Statements about EDC and Tractus-X EDC were checked against the source at EDC v0.17.0 and tractusx-edc 0.13.0, the versions the other documents in this repository use.
+Everything in sections 5–9 is taken from the [DSP 2025-1 specification](https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1-err2/) and its [source repository](https://github.com/eclipse-dataspace-protocol-base/DataspaceProtocol) at tag `2025-1-err2`. Statements about EDC and Tractus-X EDC were checked against the source at EDC v0.17.0 and tractusx-edc 0.13.0, the versions the other documents in this repository use. The example messages in sections 6–8 use one consistent set of made-up identifiers, shared with the walkthrough, and all of them validate against the official 2025-1 JSON Schemas.
 
 ## 2. DSP in one page
 
@@ -226,6 +226,18 @@ The bindings use the same status codes in all three protocols:
 
 Returning 404 for unauthorized callers hides whether a process exists. EDC does not follow this and returns 401 (section 10).
 
+### Security considerations
+
+The spec says little about security beyond "use the `Authorization` header", so most of this is practice rather than normative text:
+
+- **Expose only the DSP API.** The DSP endpoints and the version endpoint must be reachable from the internet; the Management API, and anything else that changes your connector's state, must not be.
+- **Treat every inbound message as untrusted, including callbacks.** An agreement or a start message arriving at your callback address is a request from another participant like any other. EDC authenticates it with DCP exactly like a first request (DCP guide section 7).
+- **The callback address is attacker-controlled.** A provider sends follow-up messages to whatever `callbackAddress` the consumer supplied. The spec requires an unrecoverable error for an address the receiver does not understand. Beyond that, deployments should make sure their connector cannot be used to reach internal hosts through a crafted address.
+- **Data addresses carry secrets.** The `authorization` value in a data address is a live credential for the data plane or for the consumer's push destination. Never log message bodies that contain one, and keep these tokens short-lived.
+- **The version endpoint is public by design.** It reveals which DSP versions and paths you run, which is the price of discovery.
+- **Catalogs are tailored per caller.** A provider that filters its catalog by credentials controls who sees which offers. A provider that lists everything and enforces only at negotiation reveals its full offer set to anyone who can authenticate.
+- **Use HTTPS everywhere.** The bindings require HTTPS support, and DCP requires all participant communication over HTTPS.
+
 ## 6. Catalog Protocol
 
 ### Messages and endpoints
@@ -248,45 +260,49 @@ A catalog request has an optional `filter` whose content is implementation-speci
 
 ### The catalog structure
 
-DSP reuses DCAT 3 for catalogs and ODRL for policies, restricted by its own profile.
+DSP reuses DCAT 3 for catalogs and ODRL for policies, restricted by its own profile. The example below is the catalog from the [walkthrough](dsp-dcp-walkthrough.md): a provider offering one battery passport under a Catena-X usage policy.
 
 ```json
 {
-  "@context": ["https://w3id.org/dspace/2025/1/context.jsonld"],
-  "@id": "urn:uuid:3afeadd8-ed2d-569e-d634-8394a8836d57",
+  "@context": [
+    "https://w3id.org/dspace/2025/1/context.jsonld",
+    "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+  ],
+  "@id": "urn:uuid:0c7e2f4a-9b1d-4e8c-a5f3-6d2b1e0a9c77",
   "@type": "Catalog",
-  "participantId": "urn:example:DataProviderA",
+  "participantId": "did:web:ih.provider.example.com",
   "service": [
     {
-      "@id": "urn:uuid:4aa2dcc8-4d2d-569e-d634-8394a8834d77",
+      "@id": "urn:uuid:4aa2dcc8-4d2d-469e-a634-8394a8834d77",
       "@type": "DataService",
-      "endpointURL": "https://provider-a.com/connector"
+      "endpointURL": "https://edc.provider.example.com/api/v1/dsp/2025-1"
     }
   ],
   "dataset": [
     {
-      "@id": "urn:uuid:3dd1add8-4d2d-569e-d634-8394a8836a88",
+      "@id": "battery-pass-0001",
       "@type": "Dataset",
       "hasPolicy": [
         {
-          "@id": "urn:uuid:3dd1add8-4d2d-569e-d634-8394a8836a88",
+          "@id": "YmF0dGVyeS1wYXNzLW9mZmVy:YmF0dGVyeS1wYXNzLTAwMDE=:N2YxYzJhOGUtMGI1ZC00YzNlLTlhNmYtMmQ0YjhlMWM3YTkw",
           "@type": "Offer",
           "permission": [
             {
               "action": "use",
               "constraint": [
-                { "leftOperand": "spatial", "operator": "eq", "rightOperand": "http://example.org/EU" }
+                {
+                  "and": [
+                    { "leftOperand": "FrameworkAgreement", "operator": "eq", "rightOperand": "DataExchangeGovernance:1.0" },
+                    { "leftOperand": "UsagePurpose", "operator": "isAnyOf", "rightOperand": ["cx.circular.dpp:1"] }
+                  ]
+                }
               ]
             }
           ]
         }
       ],
       "distribution": [
-        {
-          "@type": "Distribution",
-          "format": "HttpData-PULL",
-          "accessService": "urn:uuid:4aa2dcc8-4d2d-569e-d634-8394a8834d77"
-        }
+        { "@type": "Distribution", "format": "HttpData-PULL", "accessService": "urn:uuid:4aa2dcc8-4d2d-469e-a634-8394a8834d77" }
       ]
     }
   ]
@@ -378,49 +394,74 @@ Read it as three paths:
 | ContractNegotiation (ACK) | Either | — | `providerPid`, `consumerPid`, `state` | Returned on success and by the GET endpoints |
 | ContractNegotiationError | Either | — | `providerPid`, `consumerPid` | Optional `code` and `reason`; causes no state change |
 
-The initial request from a consumer:
+The initial request from a consumer, for the offer in the catalog example above. The offer is copied unchanged, with `target` added:
 
 ```json
 {
-  "@context": ["https://w3id.org/dspace/2025/1/context.jsonld"],
+  "@context": [
+    "https://w3id.org/dspace/2025/1/context.jsonld",
+    "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+  ],
   "@type": "ContractRequestMessage",
-  "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
+  "consumerPid": "urn:uuid:3b8f1d2e-6c4a-4e9b-8f7d-0a1b2c3d4e01",
   "offer": {
+    "@id": "YmF0dGVyeS1wYXNzLW9mZmVy:YmF0dGVyeS1wYXNzLTAwMDE=:N2YxYzJhOGUtMGI1ZC00YzNlLTlhNmYtMmQ0YjhlMWM3YTkw",
     "@type": "Offer",
-    "@id": "urn:uuid:2828282:3dd1add8-4d2d-569e-d634-8394a8836a89",
-    "target": "urn:uuid:3dd1add8-4d2d-569e-d634-8394a8836a88",
-    "permission": [{ "action": "use" }]
-  },
-  "callbackAddress": "https://example.com/callback"
-}
-```
-
-The agreement the provider sends back:
-
-```json
-{
-  "@context": ["https://w3id.org/dspace/2025/1/context.jsonld"],
-  "@type": "ContractAgreementMessage",
-  "providerPid": "urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aab",
-  "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-  "agreement": {
-    "@id": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
-    "@type": "Agreement",
-    "target": "urn:uuid:3dd1add4-4d2d-569e-d634-8394a8836d23",
-    "timestamp": "2023-01-01T01:00:00Z",
-    "assigner": "http://example.com/Provider",
-    "assignee": "http://example.com/Consumer",
+    "target": "battery-pass-0001",
     "permission": [
       {
         "action": "use",
-        "constraint": [{ "leftOperand": "dateTime", "operator": "lteq", "rightOperand": "2023-12-31T06:00Z" }]
+        "constraint": [
+          {
+            "and": [
+              { "leftOperand": "FrameworkAgreement", "operator": "eq", "rightOperand": "DataExchangeGovernance:1.0" },
+              { "leftOperand": "UsagePurpose", "operator": "isAnyOf", "rightOperand": ["cx.circular.dpp:1"] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "callbackAddress": "https://edc.consumer.example.com/api/v1/dsp/2025-1"
+}
+```
+
+The agreement the provider sends back. The `target` is the dataset, `assigner` and `assignee` are the two participants, and the rules are identical to the offer:
+
+```json
+{
+  "@context": [
+    "https://w3id.org/dspace/2025/1/context.jsonld",
+    "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+  ],
+  "@type": "ContractAgreementMessage",
+  "providerPid": "urn:uuid:9e7d5c3b-1a2f-4b6e-8d0c-5f4e3d2c1b02",
+  "consumerPid": "urn:uuid:3b8f1d2e-6c4a-4e9b-8f7d-0a1b2c3d4e01",
+  "agreement": {
+    "@id": "urn:uuid:5d2c8a71-3f4e-4b9a-a6c2-7e1f0d9b8c03",
+    "@type": "Agreement",
+    "target": "battery-pass-0001",
+    "timestamp": "2026-10-10T09:15:02Z",
+    "assigner": "did:web:ih.provider.example.com",
+    "assignee": "did:web:ih.consumer.example.com",
+    "permission": [
+      {
+        "action": "use",
+        "constraint": [
+          {
+            "and": [
+              { "leftOperand": "FrameworkAgreement", "operator": "eq", "rightOperand": "DataExchangeGovernance:1.0" },
+              { "leftOperand": "UsagePurpose", "operator": "isAnyOf", "rightOperand": ["cx.circular.dpp:1"] }
+            ]
+          }
+        ]
       }
     ]
   }
 }
 ```
 
-The agreement's `@id` is what the consumer later passes as `agreementId` in a transfer request.
+The agreement's `@id` is what the consumer later passes as `agreementId` in a transfer request. The [walkthrough](dsp-dcp-walkthrough.md) (section 6) shows every message of this negotiation with its HTTP request.
 
 ### Negotiation HTTPS endpoints
 
@@ -518,29 +559,61 @@ Only the provider can make the first move to STARTED. After a suspension either 
 | TransferProcess (ACK) | Either | — | `providerPid`, `consumerPid`, `state` | Returned on success and by the GET endpoint |
 | TransferError | Either | — | `providerPid`, `consumerPid` | Optional `code` and `reason`; causes no state change |
 
-A push request names the destination in `dataAddress`:
+A pull request, under the agreement from section 7, has no `dataAddress`:
 
 ```json
 {
   "@context": ["https://w3id.org/dspace/2025/1/context.jsonld"],
   "@type": "TransferRequestMessage",
-  "consumerPid": "urn:uuid:32541fe6-c580-409e-85a8-8a9a32fbe833",
-  "agreementId": "urn:uuid:e8dc8655-44c2-46ef-b701-4cffdc2faa44",
-  "format": "example:HTTP_PUSH",
-  "dataAddress": {
-    "@type": "DataAddress",
-    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "endpoint": "http://example.com",
-    "endpointProperties": [
-      { "@type": "EndpointProperty", "name": "authorization", "value": "TOKEN-ABCDEFG" },
-      { "@type": "EndpointProperty", "name": "authType", "value": "bearer" }
-    ]
-  },
-  "callbackAddress": "https://example.com/callback"
+  "consumerPid": "urn:uuid:1f2e3d4c-5b6a-4798-8a9b-0c1d2e3f4a04",
+  "agreementId": "urn:uuid:5d2c8a71-3f4e-4b9a-a6c2-7e1f0d9b8c03",
+  "format": "HttpData-PULL",
+  "callbackAddress": "https://edc.consumer.example.com/api/v1/dsp/2025-1"
 }
 ```
 
-For a pull, the request has no `dataAddress`. Instead the provider's TransferStartMessage carries one with the same shape, pointing at the provider's data plane, and the `authorization` property holds the short-lived token the consumer must present. In EDC this data address is the **EDR**.
+Instead, the provider's TransferStartMessage carries the data address, pointing at the provider's data plane, and its `authorization` property holds the short-lived token the consumer must present. In EDC this data address is the **EDR**:
+
+```json
+{
+  "@context": ["https://w3id.org/dspace/2025/1/context.jsonld"],
+  "@type": "TransferStartMessage",
+  "providerPid": "urn:uuid:8a9b0c1d-2e3f-4a5b-9c6d-7e8f9a0b1c05",
+  "consumerPid": "urn:uuid:1f2e3d4c-5b6a-4798-8a9b-0c1d2e3f4a04",
+  "dataAddress": {
+    "@type": "DataAddress",
+    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "endpoint": "https://dataplane.provider.example.com/api/public",
+    "endpointProperties": [
+      { "@type": "EndpointProperty", "name": "authorization", "value": "eyJ...data-plane-token..." }
+    ]
+  }
+}
+```
+
+A push request is the mirror image: the consumer names its own destination in the request, with any credentials the provider needs to write there, and the start message carries no data address:
+
+```json
+{
+  "@context": ["https://w3id.org/dspace/2025/1/context.jsonld"],
+  "@type": "TransferRequestMessage",
+  "consumerPid": "urn:uuid:1f2e3d4c-5b6a-4798-8a9b-0c1d2e3f4a06",
+  "agreementId": "urn:uuid:5d2c8a71-3f4e-4b9a-a6c2-7e1f0d9b8c03",
+  "format": "HttpData-PUSH",
+  "dataAddress": {
+    "@type": "DataAddress",
+    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
+    "endpoint": "https://intake.consumer.example.com/passports",
+    "endpointProperties": [
+      { "@type": "EndpointProperty", "name": "authorization", "value": "eyJ...consumer-intake-token..." },
+      { "@type": "EndpointProperty", "name": "authType", "value": "bearer" }
+    ]
+  },
+  "callbackAddress": "https://edc.consumer.example.com/api/v1/dsp/2025-1"
+}
+```
+
+The [walkthrough](dsp-dcp-walkthrough.md) (section 7) follows the pull variant all the way to reading the data from the provider's data plane.
 
 ### Transfer HTTPS endpoints
 
@@ -585,6 +658,51 @@ Three practical consequences:
 - **Plain JSON works, if you stay compacted.** A client that sends exactly the documented shape and reads responses by the documented keys can skip JSON-LD processing entirely. That only holds while the other side also emits the canonical compacted form.
 - **Real implementations add contexts.** EDC compacts its responses with additional contexts and may render a one-item array as a single object. The Tractus-X catalog response, for instance, lists the Tractus-X auth, Catena-X policy, DSP and EDC contexts and returns `dataset` and `hasPolicy` as objects when there is only one ([walkthrough](https://github.com/eclipse-tractusx/tractusx-edc/blob/0.13.0/docs/usage/management-api-walkthrough/04_catalog.md)). Code that reads EDC output should use a JSON-LD library or accept both forms (primer section 16).
 - **Profiles add terms on top.** Catena-X policies need the Catena-X policy context so that terms such as `FrameworkAgreement` and `UsagePurpose` resolve. Because DSP's context is protected, a profile can add terms but cannot redefine DSP's.
+
+If you validate messages against the official schemas, note one defect in the 2025-1-err2 artifacts. The schemas for TransferSuspensionMessage, TransferTerminationMessage and TransferError reference `transfer-schema.json#definitions/AbstractTransferCodeMessage`, without the `/` a JSON pointer needs. Lenient validators accept it, but strict ones such as Python's `jsonschema` stop with an invalid-anchor error until the reference is corrected to `#/definitions/...`.
+
+### How to read a policy
+
+Every offer and agreement is an ODRL policy, a structured way of writing "who may do what with this dataset, under which conditions". Take the offer from section 6:
+
+```json
+{
+  "@type": "Offer",
+  "permission": [
+    {
+      "action": "use",
+      "constraint": [
+        {
+          "and": [
+            { "leftOperand": "FrameworkAgreement", "operator": "eq", "rightOperand": "DataExchangeGovernance:1.0" },
+            { "leftOperand": "UsagePurpose", "operator": "isAnyOf", "rightOperand": ["cx.circular.dpp:1"] }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Read it as: *you may **use** this dataset if you have signed the Data Exchange Governance framework agreement, version 1.0, **and** you use it for the circular-economy passport purpose.* The pieces:
+
+| Piece | Meaning | Here |
+| --- | --- | --- |
+| Policy type | `Offer` (proposed terms, in a catalog or message), `Agreement` (terms both sides accepted), `Set` (a plain policy, as stored in EDC) | `Offer` |
+| Target | The dataset the policy applies to. Implied inside a catalog, explicit in messages and agreements | `battery-pass-0001` |
+| Permission | Something allowed, if all its constraints hold | Permission to `use` |
+| Prohibition | Something forbidden, if its constraints hold | none |
+| Duty (`obligation`) | Something the assignee must do, for example delete data after a date | none |
+| Action | What the rule is about. Catena-X uses `access` in access policies and `use` in usage policies | `use` |
+| Constraint | A condition: `leftOperand` names a fact, `operator` compares, `rightOperand` is the required value | Two constraints |
+| Logical constraint | `and`, `or`, `xone` (exactly one) or `andSequence` (all, in order) wrapping other constraints. Several plain constraints in one list must all hold, the same as `and` | `and` |
+
+How a connector decides:
+
+- DSP itself never evaluates a policy and defines no left operands. The dataspace's profile says what `FrameworkAgreement` means, and the connector has code for each left operand it supports.
+- In EDC, each left operand maps to a function that receives the operator, the right operand and the caller's verified credentials, and returns true or false (primer section 11). A left operand with no registered function makes the policy fail.
+- Some constraints are proven by credentials: `FrameworkAgreement` is checked against the caller's DataExchangeGovernanceCredential. Others are pure contract terms that nobody proves, such as `UsagePurpose`. The [walkthrough](dsp-dcp-walkthrough.md) (section 6, step 3.2) shows both cases.
+- Access policies decide who sees an offer and are evaluated only by the provider. Contract (usage) policies become the offer and, once agreed, the binding terms.
 
 ### The ODRL profile
 
@@ -683,7 +801,20 @@ tractusx-edc runs both the DSP and DCP TCKs in CI (primer section 14), and upstr
 8. **Confusing EDC states with DSP states.** `AGREEING` or `STARTING` in the Management API means a message is still on its way, not that the protocol state has changed.
 9. **Expecting 404 for auth failures.** The spec says 404; EDC returns 401. Write clients that handle both.
 
-## 13. Further reading
+## 13. Ten things to remember
+
+1. DSP is three small protocols between connectors: Catalog (what is offered), Contract Negotiation (agree terms) and Transfer Process (get access). It governs access to data; the data itself moves outside DSP.
+2. It is asynchronous. A request gets an immediate acknowledgement, and the real answer arrives later as a new request to the sender's `callbackAddress`.
+3. Each negotiation and transfer has two ids, `consumerPid` and `providerPid`. You address the other side's copy by the other side's id.
+4. In EDC-to-EDC traffic a negotiation runs REQUESTED → AGREED → VERIFIED → FINALIZED, and a transfer runs REQUESTED → STARTED → COMPLETED or TERMINATED. EDC's extra `-ING` states are local bookkeeping, not protocol states.
+5. Catalogs are tailored to the caller. An empty catalog is a valid answer meaning a policy or credential check failed, not an error.
+6. Request an offer exactly as the catalog returned it, adding only `target`. Any change to the rules ends the negotiation.
+7. The agreement id is the ticket for transfers. One agreement can serve many transfers without negotiating again.
+8. In a pull transfer the provider hands the consumer an endpoint and a short-lived token (the EDR); in a push transfer the consumer names a destination and the provider writes to it.
+9. DSP 2025-1 is current, and Catena-X still also runs 0.8. A connector lists its versions at `/.well-known/dspace-version`; in Tractus-X, 2025-1 lives at `/api/v1/dsp/2025-1` with DIDs as ids, and 0.8 at `/api/v1/dsp` with BPNLs.
+10. DSP leaves identity to DCP. Every DSP message, in both directions, carries a DCP token in its `Authorization` header, and the receiver checks the sender's credentials before acting on it.
+
+## 14. Further reading
 
 | # | Read | Focus on |
 | --- | --- | --- |

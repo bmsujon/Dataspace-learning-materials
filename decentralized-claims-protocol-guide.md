@@ -6,7 +6,7 @@ As of 10 October 2026 · covers DCP v1.0.1
 
 This guide covers what a developer needs to know about the Decentralized Claims Protocol: the identity building blocks underneath it, every token, message and endpoint it defines, how trust and consent work, and how EDC, Tractus-X EDC, IdentityHub and the IssuerService implement it. The [Backend Team Primer](Catena-X%20%26%20Tractus-X%20Backend%20Team%20Primer.md) introduces the same ground in three short sections (5, 7 and 10); read those first if you are new. DCP is the identity layer under the Dataspace Protocol, so the [DSP Learning Guide](dataspace-protocol-guide.md) is the natural companion.
 
-Read sections 2–4 for the big picture, history and vocabulary, and section 5 for DIDs, credentials and presentations. Sections 6–10 walk through the specification: self-issued tokens, the presentation protocol, the issuance protocol, the trust model and the profiles. Sections 11–13 cover the implementations and a full request traced end to end, and sections 14–16 cover conformance testing, debugging and further reading.
+Read sections 2–4 for the big picture, history and vocabulary, and section 5 for DIDs, credentials and presentations. Sections 6–10 walk through the specification: self-issued tokens, the presentation protocol, the issuance protocol, the trust model and the profiles. Sections 11–13 cover the implementations and a full request traced end to end, and sections 14–17 cover conformance testing, debugging, a ten-point summary and further reading. When you have read this guide and the DSP guide, the [walkthrough](dsp-dcp-walkthrough.md) follows one complete exchange through both protocols.
 
 Sections 6–10 restate the [DCP v1.0.1 specification](https://eclipse-dataspace-dcp.github.io/decentralized-claims-protocol/v1.0.1/) from its [source repository](https://github.com/eclipse-dataspace-dcp/decentralized-claims-protocol) at tag `v1.0.1`. Statements about implementations were checked against the source of EDC v0.17.0, tractusx-edc 0.13.0, IdentityHub v0.17.0 and tractusx-identityhub 0.4.1, the versions that ship in Tractus-X 26.09.
 
@@ -230,6 +230,27 @@ Issuers MUST support revocation with BitstringStatusList (the 1.1 profile uses i
 
 ## 6. Self-issued ID tokens
 
+### Anatomy of a JWT
+
+Self-issued tokens, and under DCP's JWT profiles also credentials and presentations, are JSON Web Tokens. A JWT is three base64url-encoded parts joined by dots:
+
+```text
+eyJhbGciOiJFUzI1NiIsImtpZCI6Ii4uLiJ9 . eyJpc3MiOiJkaWQ6d2ViOi4uLiJ9 . MEUCIQDx...
+        header                                 payload                    signature
+```
+
+- **Header:** how the token is signed. `alg` is the algorithm (for example `ES256`), and `kid` names the key, here a verification method in the signer's DID document.
+- **Payload:** the claims, a JSON object.
+- **Signature:** computed over the encoded header and payload with the signer's private key. Anyone with the public key can check that neither part was changed.
+
+Header and payload are only encoded, not encrypted, so anyone holding a token can read it. Decode one locally, without sending it anywhere:
+
+```bash
+python3 -c 'import sys,json,base64; p=sys.argv[1].split(".")[1]; print(json.dumps(json.loads(base64.urlsafe_b64decode(p+"="*(-len(p)%4))),indent=2))' "$TOKEN"
+```
+
+Change the `[1]` to `[0]` to see the header. Avoid pasting live tokens into websites such as jwt.io: a self-issued token is a credential until it expires.
+
 ### Claims
 
 A self-issued ID token is a JWT signed with a private key the participant controls.
@@ -323,6 +344,8 @@ sequenceDiagram
 ```
 
 Two details are easy to miss. The verifier never calls the Credential Service with the holder's token directly: it wraps the holder's access token in a token it signs itself, so the Credential Service can check both who is asking and what they were allowed to see (proof of possession). And the access token is bound to this verifier, so another party that intercepts it cannot use it.
+
+The roles are per message, not per company. When the provider later calls the consumer back, with a contract agreement or a transfer start for example, the provider is the holder's agent and the consumer is the verifier, and the whole flow runs in the other direction. Over one negotiation each side checks the other's credentials several times; the [walkthrough](dsp-dcp-walkthrough.md) (section 6) marks every check.
 
 ### Finding the Credential Service
 
@@ -547,6 +570,8 @@ Neither profile pins a signature algorithm; implementations are expected to hand
 
 As in DSP, JSON Schema is normative and the JSON-LD context `https://w3id.org/dspace-dcp/v1.0/dcp.jsonld` compacts messages into schema-valid JSON, so messages can be handled as plain JSON. Future versions will use `vMAJOR.MINOR` in the namespace. Message types use a plain `type` field (`PresentationQueryMessage`, `CredentialRequestMessage`, ...), not `@type`.
 
+If you validate messages against the official schemas, note one defect in the v1.0.1 artifacts. `common/context-schema.json` still declares the `$id` `https://w3id.org/dspace-dcp/v08/common/context-schema.json`, while every message schema references it as `.../v1.0/common/context-schema.json`. A validator that resolves references by `$id` cannot find it until you register the file under both URLs.
+
 ## 11. DCP in EDC and Tractus-X EDC
 
 The connector plays two DCP roles: it is the holder's agent when it sends DSP requests, and the verifier when it receives them.
@@ -557,9 +582,9 @@ The connector plays two DCP roles: it is the holder's agent when it sends DSP re
 2. It asks its STS for a self-issued token with `aud` set to the counter-party's DID (`counterPartyId`) and those scopes in `bearer_access_scope`.
 3. It sends the DSP request with `Authorization: Bearer <token>`.
 
-### As the receiver (provider side)
+### As the receiver (every incoming DSP message)
 
-EDC's identity service ([source](https://github.com/eclipse-edc/Connector/blob/v0.17.0/extensions/common/iam/decentralized-claims/decentralized-claims-service/src/main/java/org/eclipse/edc/iam/decentralizedclaims/service/DcpIdentityService.java)) does the following on every DSP request:
+EDC's identity service ([source](https://github.com/eclipse-edc/Connector/blob/v0.17.0/extensions/common/iam/decentralized-claims/decentralized-claims-service/src/main/java/org/eclipse/edc/iam/decentralizedclaims/service/DcpIdentityService.java)) does the following for every incoming DSP message, on the provider and the consumer alike. The scopes it asks for come from the policy that governs the message: the access and contract policies for catalog and negotiation messages, and the agreement for transfer messages.
 
 1. Rejects the request unless the header starts with `Bearer` followed by a space.
 2. Validates the self-issued token as in section 6, including `jti` replay protection.
@@ -589,7 +614,7 @@ Upstream EDC has no built-in mapping from policy constraints to scopes; each dat
 
 - **The Catena-X scope alias.** Tractus-X requests credentials as `org.eclipse.tractusx.vc.type:<Type>:read`, the 0.8-era alias, which Catena-X wallets understand ([constants](https://github.com/eclipse-tractusx/tractusx-edc/blob/0.13.0/spi/core-spi/src/main/java/org/eclipse/tractusx/edc/TxDcpConstants.java)).
 - **Default scopes per DSP version.** Every catalog, contract and transfer request over DSP 2025-1 grants `MembershipCredential`, `DataExchangeGovernanceCredential` and `BpnCredential`. Over DSP 0.8 it grants only `MembershipCredential`.
-- **A Catena-X scope extractor.** Policy constraints in the Catena-X policy namespace become credential scopes: a left operand `X` becomes `XCredential`, except `FrameworkAgreement`, which maps to `DataExchangeGovernanceCredential`. Only `MembershipCredential`, `BpnCredential`, `DismantlerCredential` and `DataExchangeGovernanceCredential` are recognised ([source](https://github.com/eclipse-tractusx/tractusx-edc/blob/0.13.0/edc-extensions/dcp/cx-dcp/src/main/java/org/eclipse/tractusx/edc/iam/dcp/cx/scope/CxCredentialScopeExtractor.java)).
+- **A Catena-X scope extractor.** Policy constraints in the Catena-X policy namespace become credential scopes: a left operand `X` becomes `XCredential`, except `FrameworkAgreement`, which maps to `DataExchangeGovernanceCredential`. Only `MembershipCredential`, `BpnCredential`, `DismantlerCredential` and `DataExchangeGovernanceCredential` are recognised, and only catalog, contract and transfer requests are considered. Checks on callbacks such as agreements therefore rely on the default scopes alone ([source](https://github.com/eclipse-tractusx/tractusx-edc/blob/0.13.0/edc-extensions/dcp/cx-dcp/src/main/java/org/eclipse/tractusx/edc/iam/dcp/cx/scope/CxCredentialScopeExtractor.java)).
 - **Configurable extra default scopes** under `tx.edc.iam.dcp.default-scopes.<name>.alias`, `.type` and `.operation`.
 - **A choice of STS.** If `tx.edc.iam.sts.div.url` is set, the connector gets tokens from the DIV wallet; otherwise it uses the standard OAuth 2 STS client, which works with IdentityHub's STS ([source](https://github.com/eclipse-tractusx/tractusx-edc/blob/0.13.0/edc-extensions/dcp/tx-dcp-sts-div/src/main/java/org/eclipse/tractusx/edc/iam/dcp/sts/RemoteTokenServiceClientExtension.java)).
 - **A presentation cache.** Presentations fetched from a counter-party are cached per participant, counter-party DID and scope set, for 24 hours by default (`tx.edc.dcp.cache.enabled`, `tx.edc.dcp.cache.validity.seconds`). Cached entries are re-checked for expiry and revocation before reuse, and new entries are validated before they are stored.
@@ -605,6 +630,19 @@ In the Tractus-X Helm chart these come together under a few keys ([values](https
 | `dcp.sts.oauth.token_url`, `dcp.sts.oauth.client.id`, `dcp.sts.oauth.client.secret_alias` | OAuth client for the STS |
 | `dcp.cache.enabled`, `dcp.cache.validity` | The presentation cache (default on, 86,400 seconds) |
 | `dcp.didService.selfRegistration.enabled` | Register the connector as a `DataService` in its own DID document (DSP guide section 10) |
+
+### From credentials to a policy decision
+
+DCP's job ends when the verifier holds a set of verified credentials. The policy engine then turns them into a yes or no, one constraint at a time. For the main Catena-X constraints, Tractus-X EDC 0.13.0 checks the following ([cx-policy source](https://github.com/eclipse-tractusx/tractusx-edc/tree/0.13.0/edc-extensions/cx-policy/src/main/java/org/eclipse/tractusx/edc/policy/cx)):
+
+| Constraint | Credential read | What must be true |
+| --- | --- | --- |
+| `Membership eq active` | MembershipCredential | A valid MembershipCredential is present. Nothing inside it is compared |
+| `FrameworkAgreement eq DataExchangeGovernance:1.0` | DataExchangeGovernanceCredential | Its `credentialSubject.contractVersion` equals `1.0`, the part after the colon. Without a version, any credential of that type passes |
+| `BusinessPartnerNumber isAnyOf [...]` | BpnCredential | Its `bpn` claim is in the list (`isNoneOf` inverts this) |
+| `UsagePurpose isAnyOf [...]` | None | Only the operator is checked. The purpose is a contractual statement, not a proven claim |
+
+Signature, validity period, revocation and trusted issuer were all checked by DCP before any of these functions run. The functions only look at type and content. The [walkthrough](dsp-dcp-walkthrough.md) (section 6, step 3.2) shows this at the point in a negotiation where it happens.
 
 ## 12. IdentityHub and IssuerService
 
@@ -752,7 +790,20 @@ The [DCP Technology Compatibility Kit](https://github.com/eclipse-dataspacetck/d
 11. **Mixed credential formats.** A presentation that mixes VC 1.1 and VC 2.0 credentials is invalid. Each format needs its own presentation.
 12. **Holder mismatch.** EDC rejects presentations whose holder is not the DID that signed the original token. This happens when one wallet serves several identities and returns the wrong one.
 
-## 16. Further reading
+## 16. Ten things to remember
+
+1. DCP answers the question DSP leaves open: who is calling, and what can they prove? There is no central identity provider; every participant signs its own tokens and keeps its own credentials.
+2. Every participant is a DID. Its DID document holds the public keys and the address of its Credential Service, and `did:web` resolves to a plain HTTPS URL.
+3. Each DSP message carries a self-issued JWT: `iss` = `sub` = the sender's DID, `aud` = the receiver's DID, plus `exp`, `iat` and a single-use `jti`.
+4. Credentials are fetched, not sent. The token carries an opaque access token, and the verifier uses it to pull a presentation from the sender's Credential Service.
+5. The verifier wraps that access token in a token it signs itself. The holder's wallet checks both who is asking and what it was allowed to see.
+6. Consent is scopes. The holder decides beforehand which credential types the verifier may read; if it grants too few, the verifier receives fewer credentials and refuses.
+7. A credential counts only if it is validly signed, within its validity period, not revoked, and from an issuer on the verifier's trusted list.
+8. Roles are per message. Each side verifies the other on every DSP message, provider callbacks included.
+9. In Catena-X, Tractus-X always asks for the Membership, DataExchangeGovernance and Bpn credentials over DSP 2025-1, using the alias `org.eclipse.tractusx.vc.type:<Type>:read`, which tractusx-identityhub understands and upstream IdentityHub does not.
+10. Credentials only feed the policy engine. Whether `FrameworkAgreement` passes is decided by a policy function reading the credential's content, after DCP has proven the credential genuine.
+
+## 17. Further reading
 
 | # | Read | Focus on |
 | --- | --- | --- |

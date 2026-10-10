@@ -11,6 +11,7 @@ A folder of Markdown learning materials about the Catena-X / Eclipse Tractus-X d
 | `Catena-X & Tractus-X Backend Team Primer.md` | Onboarding primer: ecosystem roles, identity (BPN/DID/VC/VP), DSP and DCP protocols, EDC and IdentityHub architecture, policies, data layer, component map, a hands-on first week, running customer connectors, pitfalls, glossary, ordered reading list | The team's backend engineers, who build Connector as a Service, Dataspace as a Service and passport apps (battery, PCF, textile) |
 | `edc-connector-vs-tractusx-edc.md` | Engineering comparison and selection guide: upstream `eclipse-edc/Connector` vs. downstream `eclipse-tractusx/tractusx-edc`, with measured composition, capability matrix, risk register and recommendation | Engineers and decision makers choosing a connector base |
 | `dataspace-protocol-guide.md` | Deep dive on the Dataspace Protocol: version history, terminology, every message, state and endpoint, JSON-LD wire format, EDC/Tractus-X implementation details, pitfalls | The same backend engineers, once they need more than the primer's DSP section |
+| `dsp-dcp-walkthrough.md` | One exchange followed through DSP and DCP together, message by message, with checks, failure modes and hands-on commands | Engineers who have read section 2 of both protocol guides |
 | `decentralized-claims-protocol-guide.md` | Deep dive on the Decentralized Claims Protocol: identity building blocks, self-issued tokens, presentation and issuance protocols, trust model, profiles, EDC/Tractus-X/IdentityHub/IssuerService implementation details, end-to-end trace, debugging | Developers working on connectors, wallets or credentials |
 
 All documents are dated **10 October 2026**, and every version-specific statement is "as of" that date.
@@ -51,7 +52,7 @@ The documents overlap heavily. When a fact changes, update it in every file and 
 ### DSP guide
 
 - Follows the primer's style: one line per paragraph, inline source links, numbered sections with "(section N)" cross-references, and a closing `Sources ... As of <date>.` line. References into other documents are written as "primer section N" or "comparison guide section N", so renumbering those documents means updating this one too.
-- Sections 5–9 restate the DSP specification at tag `2025-1-err2` of `eclipse-dataspace-protocol-base/DataspaceProtocol`. Example messages are copied from the repo's `artifacts/src/main/resources/*/example/` files; check new ones against the JSON Schemas there.
+- Sections 5–9 restate the DSP specification at tag `2025-1-err2` of `eclipse-dataspace-protocol-base/DataspaceProtocol`. The example messages in sections 6–8 reuse the walkthrough's identifiers (see "Walkthrough" below), so changing one means changing both.
 - Section 10 describes EDC v0.17.0 and tractusx-edc 0.13.0 behaviour, with links to the source files at those tags. When the pinned versions change, re-check each linked claim.
 - State machines and sequences are Mermaid diagrams, which GitHub renders. Keep transitions identical to the spec's PlantUML sources in `specifications/*/figures/`.
 
@@ -60,6 +61,21 @@ The documents overlap heavily. When a fact changes, update it in every file and 
 - Same style and cross-reference rules as the DSP guide; it also references "DSP guide section N".
 - Sections 6–10 restate the DCP specification at tag `v1.0.1` of `eclipse-dataspace-dcp/decentralized-claims-protocol`; spec examples come from its `artifacts/src/main/resources/*/example/` files. Examples marked "illustrative" (DID document, credential, token) are constructed, not copied, so keep them consistent with the spec's rules.
 - Sections 11–12 describe EDC v0.17.0, tractusx-edc 0.13.0, IdentityHub v0.17.0 and tractusx-identityhub 0.4.1, with source links at those tags. IdentityHub endpoint paths and ports come from the tractusx-identityhub DCP API walkthrough.
+
+### Walkthrough
+
+- Same style as the protocol guides. It references "DSP guide section N", "DCP guide section N" and "primer section N".
+- Uses one fixed cast, listed in its section 2: the companies, DIDs and hosts, the offer id (three base64 parts decoding to `battery-pass-offer`, `battery-pass-0001` and a UUID), and the negotiation, agreement and transfer ids. Every message must use exactly these values. The DSP guide's examples share them.
+- Implementation behaviour described at each step (scope selection, mutual verification of callbacks, what each Catena-X policy function reads, EDR access, retry defaults) was checked in the EDC v0.17.0 and tractusx-edc 0.13.0 source. Re-check it when those versions change.
+
+### Validating example messages
+
+Every DSP and DCP message body in the three protocol documents must validate against the official JSON Schemas: DSP at tag `2025-1-err2` (`artifacts/src/main/resources`), DCP at tag `v1.0.1` (`artifacts/src/main/resources` plus `artifacts/src/test/resources` for the Presentation Exchange schemas). Select the schema by the message's `@type` or `type` and resolve `$ref`s by `$id`, for example with Python `jsonschema` and a `referencing` registry. Two defects in the official artifacts need working around:
+
+- DSP: the transfer suspension, termination and error schemas reference `transfer-schema.json#definitions/...` without the leading `/`.
+- DCP: `common/context-schema.json` declares a `v08` `$id`, but the other schemas reference it under `v1.0`.
+
+Decoded tokens, DID documents, EDRs and credential fragments have no message schema; keep them consistent with the spec rules by hand.
 
 ## Fact-checking
 
