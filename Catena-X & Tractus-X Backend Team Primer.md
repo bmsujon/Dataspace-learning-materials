@@ -187,10 +187,10 @@ DCP fills the identity hole DSP leaves open: it defines what goes in the `Author
 ### Presentation flow (runs on every DSP request)
 
 1. The consumer EDC asks its STS for a **self-issued ID token**: a JWT with `iss` = `sub` = its own DID, `aud` = the provider's DID, a short expiry and a `jti`.
-2. The STS embeds a second, opaque **access token** in the JWT's `token` claim. It is scoped to the credentials the consumer is willing to show, e.g. `org.eclipse.edc.vc.type:MembershipCredential:read`.
+2. The STS embeds a second, opaque **access token** in the JWT's `token` claim. It is scoped to the credentials the consumer is willing to show, e.g. `org.eclipse.tractusx.vc.type:MembershipCredential:read` in Tractus-X EDC (upstream EDC and IdentityHub use the alias `org.eclipse.dspace.dcp.vc.type`).
 3. The consumer sends the DSP message with that JWT as its `Authorization` header.
 4. The provider EDC resolves the consumer's DID, checks the JWT signature against the DID document's keys, and reads the `CredentialService` service entry.
-5. The provider sends a `PresentationQueryMessage` to `<credentialService>/presentations/query`, using the inner access token as its bearer token, and lists the scopes its policies need.
+5. The provider asks its own STS for a self-issued token addressed to the consumer, with the consumer's access token in its `token` claim, and sends a `PresentationQueryMessage` to `<credentialService>/presentations/query` with that token as its bearer token, listing the scopes its policies need.
 6. The consumer's IdentityHub validates the access token, selects matching VCs, signs a VP and returns it.
 7. The provider verifies the VP signature, each VC's issuer signature, expiry and revocation status, and checks each issuer against its configured **trusted issuers**. The VC claims become the input for policy evaluation (section 11).
 
