@@ -29,7 +29,7 @@ Four properties shape everything else:
 
 DSP deliberately leaves out:
 
-- **Identity and trust.** Every request carries an `Authorization` header, but DSP does not say what is in it. In Catena-X that gap is filled by the Decentralized Claims Protocol (primer section 7).
+- **Identity and trust.** Every request carries an `Authorization` header, but DSP does not say what is in it. In Catena-X that gap is filled by the Decentralized Claims Protocol (primer section 7 and the [DCP Developer Guide](decentralized-claims-protocol-guide.md)).
 - **Policy vocabulary.** DSP uses ODRL's structure but defines no business terms. Each dataspace publishes its own (in Catena-X, CX-0152 and the policy context).
 - **Data transfer protocols and data plane interfaces.** DSP starts and stops transfers; how data actually moves is out of scope.
 - **Finding participants.** How a consumer discovers which providers exist is left to each dataspace. DSP only standardises how to find a known participant's connector and supported versions (section 5).
@@ -159,7 +159,7 @@ EDC uses its own names for many DSP concepts. The mapping below saves a lot of c
 
 ### Authorization
 
-All requests SHOULD carry an `Authorization` header, whose content DSP does not define. It may be omitted only if the receiving connector does not require authorization. In Catena-X the header holds a DCP self-issued ID token, and the receiver uses it to fetch and verify the caller's credentials before it evaluates any policy (primer section 7).
+All requests SHOULD carry an `Authorization` header, whose content DSP does not define. It may be omitted only if the receiving connector does not require authorization. In Catena-X the header holds a DCP self-issued ID token, and the receiver uses it to fetch and verify the caller's credentials before it evaluates any policy (DCP guide sections 6, 7 and 13).
 
 ### Schemas, contexts and media type
 

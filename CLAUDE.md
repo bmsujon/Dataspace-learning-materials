@@ -11,6 +11,7 @@ A folder of Markdown learning materials about the Catena-X / Eclipse Tractus-X d
 | `Catena-X & Tractus-X Backend Team Primer.md` | Onboarding primer: ecosystem roles, identity (BPN/DID/VC/VP), DSP and DCP protocols, EDC and IdentityHub architecture, policies, data layer, component map, a hands-on first week, running customer connectors, pitfalls, glossary, ordered reading list | The team's backend engineers, who build Connector as a Service, Dataspace as a Service and passport apps (battery, PCF, textile) |
 | `edc-connector-vs-tractusx-edc.md` | Engineering comparison and selection guide: upstream `eclipse-edc/Connector` vs. downstream `eclipse-tractusx/tractusx-edc`, with measured composition, capability matrix, risk register and recommendation | Engineers and decision makers choosing a connector base |
 | `dataspace-protocol-guide.md` | Deep dive on the Dataspace Protocol: version history, terminology, every message, state and endpoint, JSON-LD wire format, EDC/Tractus-X implementation details, pitfalls | The same backend engineers, once they need more than the primer's DSP section |
+| `decentralized-claims-protocol-guide.md` | Deep dive on the Decentralized Claims Protocol: identity building blocks, self-issued tokens, presentation and issuance protocols, trust model, profiles, EDC/Tractus-X/IdentityHub/IssuerService implementation details, end-to-end trace, debugging | Developers working on connectors, wallets or credentials |
 
 All documents are dated **10 October 2026**, and every version-specific statement is "as of" that date.
 
@@ -26,6 +27,7 @@ The documents overlap heavily. When a fact changes, update it in every file and 
 - Catena-X release **CX-Titan** is current; **CX-Neptune** goes live 24 Nov 2026.
 - The renames IATP→DCP and DIM→DIV, Management API v3 deprecated in favour of v4 (v5 is virtual-connector/beta), DSP 0.8 vs 2025-1, and the upstream EDR-cache deprecation.
 - DSP **2025-1** is Eclipse release 1.0.0 (23 Jul 2025); the current erratum is **2025-1-err2** = release 1.0.2 (10 Sep 2026), editorial only. Tractus-X serves DSP 2025-1 at `/api/v1/dsp/2025-1` and 0.8 at `/api/v1/dsp`.
+- DCP **v1.0.1** (12 Nov 2025) is current; 1.0.0 was the Eclipse release of 18 Jul 2025. Tractus-X EDC 0.13.0 requests credentials with the 0.8-era scope alias `org.eclipse.tractusx.vc.type:<Type>:read`; upstream EDC and IdentityHub use `org.eclipse.dspace.dcp.vc.type`. tractusx-identityhub 0.4.1 is built on IdentityHub v0.17.0.
 
 ## Conventions per document
 
@@ -52,6 +54,12 @@ The documents overlap heavily. When a fact changes, update it in every file and 
 - Sections 5–9 restate the DSP specification at tag `2025-1-err2` of `eclipse-dataspace-protocol-base/DataspaceProtocol`. Example messages are copied from the repo's `artifacts/src/main/resources/*/example/` files; check new ones against the JSON Schemas there.
 - Section 10 describes EDC v0.17.0 and tractusx-edc 0.13.0 behaviour, with links to the source files at those tags. When the pinned versions change, re-check each linked claim.
 - State machines and sequences are Mermaid diagrams, which GitHub renders. Keep transitions identical to the spec's PlantUML sources in `specifications/*/figures/`.
+
+### DCP guide
+
+- Same style and cross-reference rules as the DSP guide; it also references "DSP guide section N".
+- Sections 6–10 restate the DCP specification at tag `v1.0.1` of `eclipse-dataspace-dcp/decentralized-claims-protocol`; spec examples come from its `artifacts/src/main/resources/*/example/` files. Examples marked "illustrative" (DID document, credential, token) are constructed, not copied, so keep them consistent with the spec's rules.
+- Sections 11–12 describe EDC v0.17.0, tractusx-edc 0.13.0, IdentityHub v0.17.0 and tractusx-identityhub 0.4.1, with source links at those tags. IdentityHub endpoint paths and ports come from the tractusx-identityhub DCP API walkthrough.
 
 ## Fact-checking
 
