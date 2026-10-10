@@ -13,6 +13,8 @@ A folder of Markdown learning materials about the Catena-X / Eclipse Tractus-X d
 
 Both documents are dated **10 October 2026**, and every version-specific statement is "as of" that date.
 
+`README.md` is the human-facing index. When you add, rename or re-date a document, update its table and "Keeping it current" section.
+
 ## Facts shared across both documents
 
 The documents overlap heavily. When a fact changes, update it in both files and in every section of each file that repeats it. Grep for the old value instead of trusting a single occurrence. The main shared facts are:
