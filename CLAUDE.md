@@ -11,10 +11,11 @@ A folder of Markdown learning materials about the Catena-X / Eclipse Tractus-X d
 | `Catena-X & Tractus-X Backend Team Primer.md` | Onboarding primer: ecosystem roles, identity (BPN/DID/VC/VP), DSP and DCP protocols, EDC and IdentityHub architecture, policies, data layer, component map, a hands-on first week, running customer connectors, pitfalls, glossary, ordered reading list | The team's backend engineers, who build Connector as a Service, Dataspace as a Service and passport apps (battery, PCF, textile) |
 | `edc-connector-vs-tractusx-edc.md` | Engineering comparison and selection guide: upstream `eclipse-edc/Connector` vs. downstream `eclipse-tractusx/tractusx-edc`, with measured composition, capability matrix, risk register and recommendation | Engineers and decision makers choosing a connector base |
 | `dataspace-protocol-guide.md` | Deep dive on the Dataspace Protocol: version history, terminology, every message, state and endpoint, JSON-LD wire format, EDC/Tractus-X implementation details, pitfalls | The same backend engineers, once they need more than the primer's DSP section |
+| `catena-x-standards-summary.md` | Summary of all 58 CX-Titan standards, grouped by area, with an at-a-glance table, CX-Neptune changes and a mapping to our products | Anyone on the team who needs to know which standards apply and what they require |
 | `dsp-dcp-walkthrough.md` | One exchange followed through DSP and DCP together, message by message, with checks, failure modes and hands-on commands | Engineers who have read section 2 of both protocol guides |
 | `decentralized-claims-protocol-guide.md` | Deep dive on the Decentralized Claims Protocol: identity building blocks, self-issued tokens, presentation and issuance protocols, trust model, profiles, EDC/Tractus-X/IdentityHub/IssuerService implementation details, end-to-end trace, debugging | Developers working on connectors, wallets or credentials |
 
-All documents are dated **10 October 2026**, and every version-specific statement is "as of" that date.
+The protocol and ecosystem documents are dated **10 October 2026**; the standards summary is dated **25 October 2026**. Every version-specific statement is "as of" its document's date.
 
 `README.md` is the human-facing index. When you add, rename or re-date a document, update its table and "Keeping it current" section.
 
@@ -28,6 +29,7 @@ The documents overlap heavily. When a fact changes, update it in every file and 
 - Catena-X release **CX-Titan** is current; **CX-Neptune** goes live 24 Nov 2026.
 - The renames IATP→DCP and DIM→DIV, Management API v3 deprecated in favour of v4 (v5 is virtual-connector/beta), DSP 0.8 vs 2025-1, and the upstream EDR-cache deprecation.
 - DSP **2025-1** is Eclipse release 1.0.0 (23 Jul 2025); the current erratum is **2025-1-err2** = release 1.0.2 (10 Sep 2026), editorial only. Tractus-X serves DSP 2025-1 at `/api/v1/dsp/2025-1` and 0.8 at `/api/v1/dsp`.
+- CX-Titan has **58** standards. The CX-Neptune preview adds 8 (CX-0160 to CX-0167), lacks 18 Titan standards and updates 19, as of the 14 Oct 2026 site snapshot. CX-0018 requires every catalog dataset to carry `dct:type` (Catena-X taxonomy) and `cx-common:version`; the DSP guide and walkthrough examples follow this.
 - DCP **v1.0.1** (12 Nov 2025) is current; 1.0.0 was the Eclipse release of 18 Jul 2025. Tractus-X EDC 0.13.0 requests credentials with the 0.8-era scope alias `org.eclipse.tractusx.vc.type:<Type>:read`; upstream EDC and IdentityHub use `org.eclipse.dspace.dcp.vc.type`. tractusx-identityhub 0.4.1 is built on IdentityHub v0.17.0.
 
 ## Conventions per document
@@ -67,6 +69,14 @@ The documents overlap heavily. When a fact changes, update it in every file and 
 - Same style as the protocol guides. It references "DSP guide section N", "DCP guide section N" and "primer section N".
 - Uses one fixed cast, listed in its section 2: the companies, DIDs and hosts, the offer id (three base64 parts decoding to `battery-pass-offer`, `battery-pass-0001` and a UUID), and the negotiation, agreement and transfer ids. Every message must use exactly these values. The DSP guide's examples share them.
 - Implementation behaviour described at each step (scope selection, mutual verification of callbacks, what each Catena-X policy function reads, EDR access, retry defaults) was checked in the EDC v0.17.0 and tractusx-edc 0.13.0 source. Re-check it when those versions change.
+
+### Standards summary
+
+- Built from the `catenax-ev/catenax-ev.github.io` repository (snapshot of 14 October 2026). CX-Titan is `versioned_docs/version-Titan/standards`; the top-level `docs/standards` folder is the CX-Neptune preview, published under `/docs/next/`. The Neptune folder's `changelog.md` was still a copy of Titan's at that date.
+- Each standard has one entry under a group heading, in the format `### [CX-NNNN Title](link) · vX.Y.Z` followed by **Purpose**, **Applies to**, **Key requirements**, **Builds on** and **Neptune**. The groups are our own. Every CX-Titan standard must appear exactly once, and the at-a-glance table in section 3 must list the same standards and versions.
+- A page's link is `https://catenax-ev.github.io/docs/standards/<folder>` when the folder holds a file of the same name; otherwise it is `<folder>/<file>`, for example CX-0050 and CX-0143.
+- Versions come from each standard's own title line. Where the overview page disagrees (CX-0143 says v1.4.0 in its title, while the overview lists 1.2.0), use the document's version and note the mismatch.
+- When CX-Neptune goes live, re-check section 16 and every **Neptune** line, and consider re-basing the summary on Neptune.
 
 ### Validating example messages
 

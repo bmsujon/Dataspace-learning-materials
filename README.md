@@ -10,6 +10,7 @@ Notes for engineers getting up to speed on Catena-X and the Eclipse Tractus-X da
 | [EDC Connector vs. Tractus-X EDC](edc-connector-vs-tractusx-edc.md) | How upstream Eclipse EDC and Tractus-X EDC relate, what Tractus-X adds and removes, release lag, risks, and which one to build on |
 | [Dataspace Protocol (DSP) Learning Guide](dataspace-protocol-guide.md) | DSP in depth: version history, terminology, every message, state and endpoint of the Catalog, Contract Negotiation and Transfer Process protocols, the JSON-LD wire format, how EDC and Tractus-X EDC implement it, and common pitfalls |
 | [Decentralized Claims Protocol (DCP) Developer Guide](decentralized-claims-protocol-guide.md) | DCP in depth: DIDs, credentials and presentations, self-issued tokens, the presentation and issuance protocols, trust and consent, profiles, how EDC, Tractus-X EDC, IdentityHub and the IssuerService implement it, a request traced end to end, and debugging tips |
+| [Catena-X Standards: A Summary of CX-Titan](catena-x-standards-summary.md) | Every standard in the current Catena-X release (58), one by one: purpose, who must comply, key requirements, dependencies and CX-Neptune status, plus an at-a-glance table, what changes with CX-Neptune, and which standards our products depend on |
 | [One Exchange, End to End: DSP and DCP Together](dsp-dcp-walkthrough.md) | One battery-passport exchange followed message by message through both protocols, from discovery through catalog, negotiation and transfer to reading the data, with what each side checks, how credentials become policy decisions, what goes wrong, and commands to see it yourself |
 
 ## Where to start
@@ -19,9 +20,10 @@ Notes for engineers getting up to speed on Catena-X and the Eclipse Tractus-X da
 - **Reading or debugging DSP traffic:** read the primer's DSP overview (section 6), then the DSP guide. Its sections 7 and 8 have the state machines and endpoint tables; section 12 lists common pitfalls.
 - **Working on identity, wallets or credentials:** read the primer's sections 5, 7 and 10, then the DCP guide. Section 13 traces one request through every DCP step, and section 15 is a debugging checklist.
 - **Understanding how the two protocols work together:** read section 2 of both guides, then the walkthrough. Each guide ends with a "ten things to remember" summary.
+- **Finding which Catena-X standards apply:** start with the standards summary's at-a-glance table (section 3) and its product mapping (section 17), then read the entries you need.
 
 ## Keeping it current
 
-All documents are accurate as of 10 October 2026. Catena-X, Tractus-X, EDC and the DSP and DCP specifications all release often, so check version numbers and dates against the linked sources before relying on them. Appendix A of the comparison guide has the commands used to verify its figures.
+The protocol documents are accurate as of 10 October 2026, and the standards summary as of 25 October 2026. Catena-X, Tractus-X, EDC and the DSP and DCP specifications all release often, so check version numbers and dates against the linked sources before relying on them. Appendix A of the comparison guide has the commands used to verify its figures.
 
 When editing, link a source for every new claim, and update a fact in every document it appears in. [CLAUDE.md](CLAUDE.md) lists the full editing conventions.
