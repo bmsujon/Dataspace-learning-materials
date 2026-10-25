@@ -282,6 +282,9 @@ DSP reuses DCAT 3 for catalogs and ODRL for policies, restricted by its own prof
     {
       "@id": "battery-pass-0001",
       "@type": "Dataset",
+      "dct:type": { "@id": "https://w3id.org/catenax/taxonomy#Submodel" },
+      "https://w3id.org/catenax/ontology/common#version": "3.0",
+      "https://admin-shell.io/aas/3/0/HasSemantics/semanticId": "urn:samm:io.catenax.battery.battery_pass:6.1.0#BatteryPass",
       "hasPolicy": [
         {
           "@id": "YmF0dGVyeS1wYXNzLW9mZmVy:YmF0dGVyeS1wYXNzLTAwMDE=:N2YxYzJhOGUtMGI1ZC00YzNlLTlhNmYtMmQ0YjhlMWM3YTkw",

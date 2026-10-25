@@ -58,7 +58,7 @@ Nothing in this walkthrough works unless the following is already true. Most "it
 The provider's two policies, which come back at several points below:
 
 - **Access policy:** `Membership eq active`. It decides who may see the offer. It is evaluated by the provider only and never sent over DSP.
-- **Contract policy:** `FrameworkAgreement eq DataExchangeGovernance:1.0` and `UsagePurpose isAnyOf cx.circular.dpp:1`. It becomes the offer in the catalog and later the agreement.
+- **Contract policy:** `FrameworkAgreement eq DataExchangeGovernance:1.0` and `UsagePurpose isAnyOf cx.circular.dpp:1`. It becomes the offer in the catalog and later the agreement. CX-0152 also requires every policy to declare the Catena-X `profile` (`https://w3id.org/catenax/2025/9/policy/`). Like the CX-0152 samples and the Tractus-X walkthrough, the examples here leave it out (primer section 11).
 
 ## 4. Step 1: find the provider's connector
 
@@ -260,6 +260,9 @@ The verified credentials become the consumer's claims. The access policy `Member
     {
       "@id": "battery-pass-0001",
       "@type": "Dataset",
+      "dct:type": { "@id": "https://w3id.org/catenax/taxonomy#Submodel" },
+      "https://w3id.org/catenax/ontology/common#version": "3.0",
+      "https://admin-shell.io/aas/3/0/HasSemantics/semanticId": "urn:samm:io.catenax.battery.battery_pass:6.1.0#BatteryPass",
       "hasPolicy": [
         {
           "@id": "YmF0dGVyeS1wYXNzLW9mZmVy:YmF0dGVyeS1wYXNzLTAwMDE=:N2YxYzJhOGUtMGI1ZC00YzNlLTlhNmYtMmQ0YjhlMWM3YTkw",
@@ -289,7 +292,10 @@ The verified credentials become the consumer's claims. The access policy `Member
 
 What the consumer reads from it:
 
-- The dataset id.
+- The dataset id, and the three properties Catena-X requires or recommends on every dataset:
+  - `dct:type` from the Catena-X taxonomy, here `Submodel` (CX-0018 and CX-0002).
+  - `cx-common:version`, which for a submodel is the AAS specification version.
+  - `semanticId`, the aspect model URN, so consumers can filter catalogs by data model.
 - The offer, with its id and rules. These are copied unchanged into the next step.
 - The `HttpData-PULL` format, meaning the consumer will pull the data.
 - The `endpointURL` where negotiations for this dataset start.
@@ -380,10 +386,15 @@ So the relevant part of the consumer's DataExchangeGovernanceCredential looks li
   "credentialSubject": {
     "id": "did:web:ih.consumer.example.com",
     "holderIdentifier": "BPNL000000000OEM",
+    "group": "UseCaseFramework",
+    "useCase": "<the framework's use case name>",
+    "contractTemplate": "<URL of the signed framework agreement template>",
     "contractVersion": "1.0"
   }
 }
 ```
+
+All six `credentialSubject` fields are required by the credential's schema in CX-0050; only `contractVersion` decides this constraint.
 
 A constraint such as `BusinessPartnerNumber isAnyOf [...]` would read the `bpn` claim of the BpnCredential instead (primer section 11). Both checks pass, so the provider creates its copy of the negotiation and answers:
 
